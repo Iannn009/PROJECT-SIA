@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #005461;
+            color: white;   
+            padding: 20px;
+        }
+
+        h1 {
+            color: #3BC1A8;
+            margin-bottom: 20px;
+        }
+
+        .main-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .left-side,
+        .right-side {
+            flex: 1;
+            min-width: 300px;
+            max-width: 500px;
+        }
+
+        .card {
+            background: #0C7779;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .distance {
+            font-size: 48px;
+            color: #00ff88;
+        }
+
+        .status {
+            font-size: 24px;
+            margin: 10px;
+        }
+
+        .on {
+            color: #00ff88;
+        }
+
+        .off {
+            color: #ff4757;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .btn-on {
+            background: #00ff88;
+            color: #1a1a2e;
+        }
+
+        .btn-off {
+            background: #ff4757;
+            color: white;
+        }   
+
+        .camera-box {
+            background: #0C7779;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        #cameraFeed {
+            width: 100%;
+            max-width: 400px;
+            height: 250px;
+            background: #000;
+            border-radius: 5px;
+            object-fit: cover;
+        }
+
+        .camera-input {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .camera-input input {
+            padding: 8px;
+            border-radius: 5px;
+            border: none;
+            width: 200px;
+        }
+
+        .camera-input button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            background: #00d4ff;
+            color: #1a1a2e;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Distance Camera Object Detector</h1>
+
+    <div class="main-container">
+        <div class="left-side">
+            <div class="card">
+                <h2>Distance</h2>
+                <div class="distance"><span id="distance">0</span> cm</div>
+            </div>
+
+            <div class="card">
+                <h2>Status</h2>
+                <div class="status">LED1: <span id="led1">OFF</span></div>
+                <div class="status">LED2: <span id="led2">OFF</span></div>
+                <div class="status">BUZZER: <span id="buzzer">OFF</span></div>
+            </div>
+
+            <div class="card">
+                <h3>Manual Controls</h3>
+                <button class="btn btn-on" onclick="sendCommand('led1', 'on')">LED1 ON</button>
+                <button class="btn btn-off" onclick="sendCommand('led1', 'off')">LED1 OFF</button>
+                <br>
+                <button class="btn btn-on" onclick="sendCommand('led2', 'on')">LED2 ON</button>
+                <button class="btn btn-off" onclick="sendCommand('led2', 'off')">LED2 OFF</button>
+                <br>
+                <button class="btn btn-on" onclick="sendCommand('buzzer', 'on')">BUZZER ON</button>
+                <button class="btn btn-off" onclick="sendCommand('buzzer', 'off')">BUZZER OFF</button>
+            </div>
+        </div>
+
+        <div class="right-side">
+            <div class="camera-box">
+                <h2>Camera Feed</h2>
+                <video id="cameraFeed" autoplay playsinline></video>
+                <div class="camera-input">
+                    <input type="text" id="cameraUrl" placeholder="Enter IP Camera URL">
+                    <button onclick="loadCamera()">Load</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                document.getElementById('distance').innerText = data.distance;
+                updateStatus('led1', data.led1_status);
+                updateStatus('led2', data.led2_status);
+                updateStatus('buzzer', data.buzzer_status);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function updateStatus(id, status) {
+            const el = document.getElementById(id);
+            el.innerText = status;
+            el.className = status === 'ON' ? 'on' : 'off';
+        }
+
+        async function sendCommand(command, value) {
+            try {
+                await fetch('/api/command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: command, value: value })
+                });
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        setInterval(fetchData, 1000);
+        fetchData();
+
+        const video = document.getElementById('cameraFeed');
+        async function startWebcam() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+            } catch (err) {
+                console.log("Webcam not available:", err);
+            }
+        }
+
+        function loadCamera() {
+            const url = document.getElementById('cameraUrl').value;
+            if (url) video.src = url;
+        }
+
+        startWebcam();
+    </script>
+</body>
+
+</html>
